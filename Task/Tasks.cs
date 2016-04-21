@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -17,8 +20,14 @@ namespace Task
         /// <returns>The sequence of downloaded url content</returns>
         public static IEnumerable<string> GetUrlContent(this IEnumerable<Uri> uris)
         {
-            // TODO : Implement GetUrlContent
-            throw new NotImplementedException();
+            using (var webClient = new WebClient())
+            {
+                foreach (var uri in uris)
+                {
+                    yield return webClient.DownloadString(uri);
+                }
+            }
+
         }
 
         /// <summary>
@@ -33,8 +42,16 @@ namespace Task
         /// <returns>The sequence of downloaded url content</returns>
         public static IEnumerable<string> GetUrlContentAsync(this IEnumerable<Uri> uris, int maxConcurrentStreams)
         {
-            // TODO : Implement GetUrlContentAsync
-            throw new NotImplementedException();
+            Uri[] urisArray = uris.ToArray();
+            string[] result = new string[uris.Count()];
+            var httpClient = new HttpClient();
+
+            ParallelOptions parallelOptions = new ParallelOptions();
+            parallelOptions.MaxDegreeOfParallelism = maxConcurrentStreams;
+            Parallel.For(0, uris.Count(), parallelOptions,
+                (i) => result[i] = (httpClient.GetStringAsync(urisArray[i]).Result));
+
+            return result;
         }
 
         /// <summary>
@@ -47,8 +64,21 @@ namespace Task
         /// <returns>MD5 hash</returns>
         public static Task<string> GetMD5Async(this Uri resource)
         {
-            // TODO : Implement GetMD5Async
-            throw new NotImplementedException();
+            return System.Threading.Tasks.Task.Run(() =>
+            {
+                string input = new WebClient().DownloadString(resource);
+
+                MD5 md5Hasher = MD5.Create();
+                byte[] data = md5Hasher.ComputeHash(Encoding.Default.GetBytes(input));
+                StringBuilder sBuilder = new StringBuilder();
+                for (int i = 0; i < data.Length; i++)
+                {
+                    sBuilder.Append(data[i].ToString("x2"));
+                }
+
+                return sBuilder.ToString();
+            });
         }
     }
 }
+
